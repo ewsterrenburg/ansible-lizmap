@@ -1,0 +1,69 @@
+- name: Add an Apt signing key, for QGIS Debian repository
+  apt_key:
+    url: https://qgis.org/downloads/qgis-2017.gpg.key
+    state: present
+  become: yes
+
+- name: Add QGIS Debian repository to sources list
+  apt_repository:
+    repo: deb https://qgis.org/debian bionic main
+    state: present
+  become: yes
+
+- name: Install QGIS Server
+  apt:
+    pkg: ['qgis-server', 'python-qgis']
+    update_cache: yes
+  become: yes
+
+- name: Create log directory for QGIS Server
+  file:
+    path: /var/log/qgis
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: u=rw,g=r,o=r
+  become: yes
+
+- name: Create directory for QGIS Server authorization database
+  file:
+    path: /home/qgis/qgisserverdb
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: u=rw,g=r,o=r
+  become: yes
+
+- name: Install Apache
+  apt:
+    pkg: ['apache2', 'libapache2-mod-fcgid']
+    update_cache: yes
+  become: yes
+
+#- name: Enable fcgid module
+#  command: a2enmod fcgid
+#  become: yes
+
+- name: Copy Apache configuration file for QGIS server
+  template:
+    src: qgis-server.conf.j2
+    dest: /etc/apache2/sites-available/qgis-server.conf
+    owner: www-data
+    group: www-data
+    mode: u=rw,g=r,o=r
+  become: yes
+
+- name: Make Apache2 listen on port 8888
+  lineinfile: dest=/etc/apache2/ports.conf insertafter="^Listen" line="Listen 8888" state=present
+  become: yes
+
+- name: Enable qgis-server site in Apache
+  command: a2ensite qgis-server
+  become: yes
+
+- name: Restart service apache2, in all cases
+  service:
+    name: apache2
+    state: restarted
+  become: yes
+

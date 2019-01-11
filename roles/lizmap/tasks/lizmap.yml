@@ -1,0 +1,91 @@
+- name: Reconfigure locales
+  command: dpkg-reconfigure locales -f noninteractive
+  become: yes
+
+- name: Reconfigure tzdata
+  command: dpkg-reconfigure tzdata -f noninteractive
+  become: yes
+
+- name: Install ntp & ntpdate
+  apt:
+    pkg: ['ntp', 'ntpdate']
+    update_cache: yes
+  become: yes
+
+- name: Install unzip
+  apt:
+    pkg: ['unzip']
+    update_cache: yes
+  become: yes
+
+- name: Install php
+  apt:
+    pkg: ['libapache2-mod-php7.2', 'php7.2-cgi', 'php7.2-gd', 'php7.2-sqlite3', 'php7.2-curl', 'php7.2-xmlrpc', 'php7.2-xml', libapache2-mod-fcgid]
+    update_cache: yes
+  become: yes
+
+- name: Download & unzip Lizmap
+  unarchive:
+    src: https://github.com/3liz/lizmap-web-client/archive/{{ lizmap_version }}.zip
+    dest: /var/www/
+    remote_src: yes
+  become: yes
+
+- name: Make available under lm using symbolic link
+  file:
+    src: /var/www/lizmap-web-client-{{ lizmap_version }}/lizmap/www
+    dest: /var/www/html/lm
+    owner: www-data
+    group: www-data
+    state: link
+  become: yes
+
+- name: Copy lizmapConfig
+  copy:
+    src: /var/www/lizmap-web-client-{{ lizmap_version }}/lizmap/var/config/lizmapConfig.ini.php.dist
+    dest: /var/www/lizmap-web-client-{{ lizmap_version }}/lizmap/var/config/lizmapConfig.ini.php
+  become: yes
+
+- name: Copy localconfig
+  copy:
+    src: /var/www/lizmap-web-client-{{ lizmap_version }}/lizmap/var/config/localconfig.ini.php.dist
+    dest: /var/www/lizmap-web-client-{{ lizmap_version }}/lizmap/var/config/localconfig.ini.php
+  become: yes
+
+- name: Copy profiles
+  copy:
+    src: /var/www/lizmap-web-client-{{ lizmap_version }}/lizmap/var/config/profiles.ini.php.dist
+    dest: /var/www/lizmap-web-client-{{ lizmap_version }}/lizmap/var/config/profiles.ini.php
+  become: yes
+
+- name: Install lizmap
+  command: php /var/www/lizmap-web-client-{{ lizmap_version }}/lizmap/install/installer.php
+  become: yes
+
+- name: Set rights
+  command: sh /var/www/lizmap-web-client-{{ lizmap_version }}/lizmap/install/set_rights.sh www-data www-data
+  become: yes
+
+- name: enable modules
+  command: a2enmod actions fcgid ssl rewrite headers deflate
+  become: yes
+
+- name: Copy Apache configuration file for mod deflate
+  template:
+    src: mod_deflate.conf.j2
+    dest: /etc/apache2/conf-available/mod_deflate.conf
+    owner: www-data
+    group: www-data
+    mode: u=rw,g=r,o=r
+  become: yes
+
+- name: Set deflate config
+  command: a2enconf mod_deflate
+  become: yes
+
+- name: Restart service apache2, in all cases
+  service:
+    name: apache2
+    state: restarted
+  become: yes
+

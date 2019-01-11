@@ -1,0 +1,7 @@
+---
+# Tasks file for lizmap
+
+- include: qgis-server.yml
+- include: lizmap.yml
+
+

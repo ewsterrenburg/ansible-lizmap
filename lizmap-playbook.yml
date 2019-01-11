@@ -1,0 +1,5 @@
+---
+# file: lizmap.yml
+- hosts: localhost
+  roles:
+    - lizmap
